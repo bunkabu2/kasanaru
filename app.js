@@ -4,7 +4,8 @@ const POOL = Object.fromEntries(Object.entries(window.KASANARU_DECKS).map(([k, v
 
 const MODES = {
   asobi:  {name:'あそび', mk:'遊', sub:'みんなで、これからなにする？', talk:false, min:2, def:3},
-  gohan:  {name:'ごはん', mk:'食', sub:'なに食べる？を、気持ちよく決める', talk:false, min:2, def:3},
+  tabetai:{name:'たべたい', mk:'食', sub:'いま、なに食べたい？を料理で決める', talk:false, min:2, def:3, goal:'これから、食べるもの', v:{yes:'食べたい', maybe:'ありかも', no:'パス'}, when:[['近くで','すぐ行ける'],['少し足をのばす','今日のうちに'],['特別な日に','遠出・予約・手作り']]},
+  gohan:  {name:'ごはん会', mk:'宴', sub:'鍋、はしご、食べ放題。どう食べるかを決める', talk:false, min:2, def:3},
   futari: {name:'ふたり', mk:'二', sub:'遠慮なしで、ふたりの予定を決める', talk:false, min:2, max:2, def:2},
   honne:  {name:'ほんね', mk:'話', sub:'全員が「話してもいい」お題だけが残る', talk:true, min:2, def:3},
 };
@@ -14,6 +15,8 @@ const V = {
   talk:{yes:'話したい', maybe:'話せる', no:'パス'},
 };
 const MAX_ONLINE = 8;
+const goal = () => MODES[S.mode].talk ? 'これから話すこと' : (MODES[S.mode].goal || 'これから、やること');
+const whenOf = () => MODES[S.mode].when || WHEN;
 const AV = ['var(--pink)','var(--blue)','var(--warn)','var(--both)','var(--ok)'];
 
 /* ───────── 保存 ───────── */
@@ -39,7 +42,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const shuffle = a => { for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const players = () => S.names.map((n, i) => String(n).trim() || `プレイヤー${i+1}`);
-const words = () => MODES[S.mode].talk ? V.talk : V.play;
+const words = () => MODES[S.mode].v || (MODES[S.mode].talk ? V.talk : V.play);
 const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; };
 const cleanName = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 12);
 const myName = () => cleanName(store.get(ME, '')) || 'わたし';
@@ -287,7 +290,7 @@ function playerList(showProg){
       ${showProg ? `<span class="pbar"><b class="${p.done ? 'full' : ''}" style="width:${(p.done ? 1 : p.i / S.cards.length) * 100}%"></b></span>` : ''}
     </div>`).join('')}</div>`;
 }
-const settingsLine = () => [MODES[S.mode].name, MODES[S.mode].talk ? '' : WHEN[S.when][0], `${S.per}枚`].filter(Boolean).join('・');
+const settingsLine = () => [MODES[S.mode].name, MODES[S.mode].talk ? '' : whenOf()[S.when][0], `${S.per}枚`].filter(Boolean).join('・');
 
 /* ───────── 画面 ───────── */
 const SCREENS = {
@@ -382,7 +385,7 @@ lobby(){
       <div class="seg small">${Object.entries(MODES).map(([k, x]) => `<button data-setmode="${k}" aria-pressed="${S.mode === k}">${x.name}</button>`).join('')}</div>
       <p class="small muted">${esc(m.sub)}</p></div>
     ${m.talk ? '' : `<div class="sec"><div class="label">いつやる？</div>
-      <div class="seg">${WHEN.map((w, i) => `<button data-when="${i}" aria-pressed="${S.when === i}">${w[0]}<small>${w[1]}</small></button>`).join('')}</div></div>`}
+      <div class="seg">${whenOf().map((w, i) => `<button data-when="${i}" aria-pressed="${S.when === i}">${w[0]}<small>${w[1]}</small></button>`).join('')}</div></div>`}
     <div class="sec"><div class="label">カードの枚数</div>
       <div class="seg">${[8,12,16].map(n => `<button data-per="${n}" aria-pressed="${S.per === n}">${n}枚</button>`).join('')}</div></div>
     <details class="sec" ${S.custom ? 'open' : ''}><summary>じぶんたちのカードを足す</summary>
@@ -414,7 +417,7 @@ setup(){
     ${!m.max && ns.length < 10 ? `<button class="add" data-add>＋ 人を追加</button>` : ''}
   </div>
   ${m.talk ? '' : `<div class="sec"><div class="label">いつやる？</div>
-    <div class="seg">${WHEN.map((w, i) => `<button data-when="${i}" aria-pressed="${S.when === i}">${w[0]}<small>${w[1]}</small></button>`).join('')}</div></div>`}
+    <div class="seg">${whenOf().map((w, i) => `<button data-when="${i}" aria-pressed="${S.when === i}">${w[0]}<small>${w[1]}</small></button>`).join('')}</div></div>`}
   <div class="sec"><div class="label">カードの枚数</div>
     <div class="seg">${[8,12,16].map(n => `<button data-per="${n}" aria-pressed="${S.per === n}">${n}枚<small>${n === 8 ? 'さくっと' : n === 12 ? 'ふつう' : 'じっくり'}</small></button>`).join('')}</div></div>
   <details class="sec" ${S.custom ? 'open' : ''}><summary>じぶんたちのカードを足す</summary>
@@ -446,7 +449,7 @@ judge(){
     <div class="card" id="card">
       <div class="deck"><span>${m.name}</span><span class="mono">No.${String(S.i+1).padStart(2, '0')}</span></div>
       <div class="txt">${esc(c.t)}</div>
-      <div class="tags">${c.mine ? '<span class="tag mine">じぶんたちのカード</span>' : m.talk ? '<span class="tag">話すお題</span>' : `<span class="tag">${WHEN[c.w][0]}</span>`}</div>
+      <div class="tags">${c.mine ? '<span class="tag mine">じぶんたちのカード</span>' : m.talk ? '<span class="tag">話すお題</span>' : `<span class="tag">${whenOf()[c.w][0]}</span>`}</div>
       <span class="stamp y">${w.yes}</span><span class="stamp n">${w.no}</span><span class="stamp m">${w.maybe}</span>
     </div>
   </div>
@@ -501,7 +504,7 @@ result(){
     <div class="orbs"><i></i><i></i></div>
     <p class="kicker">${perfect ? `全員が「${w.yes}」で一致！` : m.talk ? 'このお題で話そう' : 'かさなった！'}</p>
     <div class="card">
-      <div class="deck"><span>${m.talk ? 'これから話すこと' : 'これから、やること'}</span><span class="mono">${T.n}人</span></div>
+      <div class="deck"><span>${goal()}</span><span class="mono">${T.n}人</span></div>
       <div class="txt">${esc(top.c.t)}</div>
       <div class="underline">${meter(top)}<span class="small muted mono">${w.yes} ${top.yes}・${w.maybe} ${top.maybe}</span></div>
     </div>
@@ -731,7 +734,7 @@ function copyResult(){
   const T = tally(), w = words(), m = MODES[S.mode];
   if (!T.hits.length) return copyText(`【カサナル／${m.name}】${T.n}人で${S.cards.length}枚を選んだけど、今回はかさならなかった！`, 'コピーしました');
   const top = T.tops[S.tie % T.tops.length];
-  copyText(`【カサナル／${m.name}】${T.n}人で${S.cards.length}枚から選んだ結果\n${m.talk ? 'これから話すこと' : 'これから、やること'}：${top.c.t}\n（${w.yes}${top.yes}・${w.maybe}${top.maybe}／ノリ度${T.vibe}%）`, 'コピーしました');
+  copyText(`【カサナル／${m.name}】${T.n}人で${S.cards.length}枚から選んだ結果\n${goal()}：${top.c.t}\n（${w.yes}${top.yes}・${w.maybe}${top.maybe}／ノリ度${T.vibe}%）`, 'コピーしました');
 }
 
 window.addEventListener('pagehide', e => { if (!e.persisted) closeNet(); });
