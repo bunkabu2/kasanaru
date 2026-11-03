@@ -1,6 +1,6 @@
 (() => {
 const POOL = Object.fromEntries(Object.entries(window.KASANARU_DECKS).map(([k, v]) => [k,
-  v.split('\n').map(l => ({w: +l[0], t: l.slice(1).trim()})).filter(c => c.t)]));
+  v.split('\n').map(l => { const [t, q] = l.slice(1).split('|'); return {w: +l[0], t: t.trim(), q: (q || '').trim()}; }).filter(c => c.t)]));
 
 const MODES = {
   asobi:  {name:'あそび', mk:'遊', sub:'みんなで、これからなにする？', talk:false, min:2, def:3},
@@ -16,6 +16,10 @@ const V = {
   talk:{yes:'話したい', maybe:'話せる', no:'パス'},
 };
 const MAX_ONLINE = 8;
+/* Googleマップで探す言葉。外食はカードの文面そのもの、ほかのモードは場所に結びつくカードだけ */
+const mapQuery = (c, mode) => (c && (c.q || (mode === 'tabetai' ? c.t : ''))) || '';
+const mapUrl = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const mapLink = (q, label, cls) => q ? `<a class="${cls}" href="${esc(mapUrl(q))}" target="_blank" rel="noopener">${label}</a>` : '';
 const goal = () => MODES[S.mode].talk ? 'これから話すこと' : (MODES[S.mode].goal || 'これから、やること');
 const whenOf = () => MODES[S.mode].when || WHEN;
 const AV = ['var(--pink)','var(--blue)','var(--warn)','var(--both)','var(--ok)'];
@@ -226,7 +230,7 @@ function guestMsg(m){
   }
   if (m.t === 'start' && MODES[m.mode] && Array.isArray(m.cards)) {
     S.mode = m.mode; o.round = m.round;
-    S.cards = m.cards.map(c => ({t:String(c.t || '').slice(0, 80), w:[0,1,2].includes(c.w) ? c.w : 0, mine:!!c.mine}));
+    S.cards = m.cards.map(c => ({t:String(c.t || '').slice(0, 80), q:String(c.q || '').slice(0, 40), w:[0,1,2].includes(c.w) ? c.w : 0, mine:!!c.mine}));
     S.rnd = Array.isArray(m.rnd) ? m.rnd.map(Number) : [];
     S.names = o.players.map(p => p.name);
     S.votes = [[]]; S.p = 0; S.i = 0; S.tie = 0; o.phase = 'play';
@@ -499,7 +503,7 @@ result(){
   const top = T.tops[S.tie % T.tops.length];
   const perfect = top.yes === T.n;
   const rest = T.hits.filter(h => h !== top);
-  S.last = {card:top.c.t, mode:S.mode, players:players()};
+  S.last = {card:top.c.t, q:mapQuery(top.c, S.mode), mode:S.mode, players:players()};
   return `${bar}
   <section class="hit screen-in">
     <div class="orbs"><i></i><i></i></div>
@@ -512,13 +516,14 @@ result(){
     ${T.tops.length > 1 ? `<p class="note">同点が${T.tops.length}枚。カサナルがひとつ選びました。${!on || host ? '<button class="link" data-tie style="color:var(--blue)">ほかの同点にする</button>' : ''}</p>` : ''}
   </section>
   <button class="primary" data-keep>${m.talk ? 'これで話す' : 'これにする'}</button>
+  ${mapLink(mapQuery(top.c, S.mode), `<span class="pin"></span>「${esc(mapQuery(top.c, S.mode))}」を現在地の近くで探す`, 'maplink')}
   <div class="stats">
     <div class="stat"><div class="k">みんなのノリ度</div><div class="v">${T.vibe}<span class="small">%</span></div></div>
     <div class="stat"><div class="k">かさなったカード</div><div class="v">${T.hits.length}<span class="small"> / ${S.cards.length}枚</span></div></div>
     ${T.split && T.split.spread > 0 ? `<div class="stat" style="grid-column:1/-1"><div class="k">いちばん意見が割れたカード</div><div class="d">${esc(T.split.c.t)}</div></div>` : ''}
   </div>
   ${rest.length ? `<div class="label">ほかにかさなったカード</div>
-  <div class="list">${rest.map(r => `<div class="li"><span class="t">${esc(r.c.t)}<br>${meter(r)}</span><button class="pick" data-pick="${r.i}">これにする</button></div>`).join('')}</div>` : ''}
+  <div class="list">${rest.map(r => `<div class="li"><span class="t">${esc(r.c.t)}<br>${meter(r)}</span><span class="picks">${mapLink(mapQuery(r.c, S.mode), '地図', 'pick')}<button class="pick" data-pick="${r.i}">これにする</button></span></div>`).join('')}</div>` : ''}
   ${again}
   <button class="ghost" data-copy>結果をコピー</button>`;
 },
@@ -550,6 +555,7 @@ notes(){
       <div class="m">${n.players.map(esc).join('・')}</div>
       ${n.memo ? `<div class="memo">${esc(n.memo)}</div>` : ''}
       <div class="acts">
+        ${mapLink(n.q, '地図で探す', 'pill')}
         <button class="pill ${n.done ? 'done' : ''}" data-done="${esc(n.id)}">${n.done ? '✓ やった！' : 'まだ'}</button>
         <button class="pill danger" data-rm="${esc(n.id)}">けす</button>
       </div>
@@ -618,7 +624,7 @@ app.addEventListener('click', e => {
   }
   if (d.tie !== undefined) { S.tie++; if (isHost()) net.broadcast({t:'tie', n:S.tie}); return render(); }
   if (d.pick) {
-    S.last = {card:S.cards[+d.pick].t, mode:S.mode, players:players()};
+    S.last = {card:S.cards[+d.pick].t, q:mapQuery(S.cards[+d.pick], S.mode), mode:S.mode, players:players()};
     return go('keep');
   }
   if (d.keep !== undefined) return go('keep');
@@ -627,7 +633,7 @@ app.addEventListener('click', e => {
   if (d.save !== undefined) {
     const memo = (document.getElementById('memo') || {}).value || '';
     const notes = store.get(NOTES, []);
-    notes.unshift({id:Date.now().toString(36), date:today(), mode:S.last.mode, card:S.last.card, players:S.last.players, memo:memo.trim(), done:false});
+    notes.unshift({id:Date.now().toString(36), date:today(), mode:S.last.mode, card:S.last.card, q:S.last.q || '', players:S.last.players, memo:memo.trim(), done:false});
     store.set(NOTES, notes);
     toast('ノートに残しました');
     return go(S.online ? 'result' : 'notes');

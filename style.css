@@ -268,3 +268,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;opac
 :focus-visible{outline-color:var(--both)}
 
 .seg.small{display:grid;grid-template-columns:repeat(3,1fr)}
+
+/* Googleマップへのリンク */
+.maplink{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--both);border:1.5px solid rgba(240,185,162,.35);border-radius:999px;padding:12px 16px;font-weight:700;font-size:14px;text-align:center;line-height:1.4}
+.maplink:hover{border-color:var(--both);box-shadow:0 0 22px -8px rgba(240,185,162,.7)}
+.pin{width:10px;height:10px;flex:none;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--pink);box-shadow:0 0 10px var(--pink)}
+.picks{display:flex;gap:14px;align-items:center}
+a.pick{color:var(--both);font-weight:700;font-size:13px;text-decoration:none}
+a.pill{text-decoration:none;color:var(--both);display:inline-flex;align-items:center}
