@@ -4,7 +4,8 @@ const POOL = Object.fromEntries(Object.entries(window.KASANARU_DECKS).map(([k, v
 
 const MODES = {
   asobi:  {name:'あそび', mk:'遊', sub:'みんなで、これからなにする？', talk:false, min:2, def:3},
-  tabetai:{name:'たべたい', mk:'食', sub:'いま、なに食べたい？を料理で決める', talk:false, min:2, def:3, goal:'これから、食べるもの', v:{yes:'食べたい', maybe:'ありかも', no:'パス'}, when:[['近くで','すぐ行ける'],['少し足をのばす','今日のうちに'],['特別な日に','遠出・予約・手作り']]},
+  uchi:   {name:'おうちごはん', short:'おうち', mk:'家', sub:'作る？頼む？ おうちで食べたいものを決める', talk:false, min:2, def:3, goal:'これから、おうちで食べるもの', v:{yes:'食べたい', maybe:'ありかも', no:'パス'}, when:[['すぐ食べる','あるもの・出前'],['買って作る','1時間くらい'],['じっくり','手作り・お取り寄せ']]},
+  tabetai:{name:'外食', mk:'外', sub:'どこに食べに行く？を料理で決める', talk:false, min:2, def:3, goal:'これから、食べに行くもの', v:{yes:'食べたい', maybe:'ありかも', no:'パス'}, when:[['近くで','すぐ行ける'],['少し足をのばす','今日のうちに'],['特別な日に','遠出・予約']]},
   gohan:  {name:'ごはん会', mk:'宴', sub:'鍋、はしご、食べ放題。どう食べるかを決める', talk:false, min:2, def:3},
   futari: {name:'ふたり', mk:'二', sub:'遠慮なしで、ふたりの予定を決める', talk:false, min:2, max:2, def:2},
   honne:  {name:'ほんね', mk:'話', sub:'全員が「話してもいい」お題だけが残る', talk:true, min:2, def:3},
@@ -382,7 +383,7 @@ lobby(){
     </div>
     <div class="sec"><div class="label">集まっている人 <span class="mono">${o.players.length}</span> / ${MAX_ONLINE}</div>${playerList(false)}</div>
     <div class="sec"><div class="label">モード</div>
-      <div class="seg small">${Object.entries(MODES).map(([k, x]) => `<button data-setmode="${k}" aria-pressed="${S.mode === k}">${x.name}</button>`).join('')}</div>
+      <div class="seg small">${Object.entries(MODES).map(([k, x]) => `<button data-setmode="${k}" aria-pressed="${S.mode === k}">${x.short || x.name}</button>`).join('')}</div>
       <p class="small muted">${esc(m.sub)}</p></div>
     ${m.talk ? '' : `<div class="sec"><div class="label">いつやる？</div>
       <div class="seg">${whenOf().map((w, i) => `<button data-when="${i}" aria-pressed="${S.when === i}">${w[0]}<small>${w[1]}</small></button>`).join('')}</div></div>`}
